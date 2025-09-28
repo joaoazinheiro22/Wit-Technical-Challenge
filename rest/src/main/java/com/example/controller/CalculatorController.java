@@ -2,7 +2,6 @@ package com.example.controller;
 
 import com.example.CalculationRequest;
 import com.example.CalculationResponse;
-import com.example.config.KafkaProducerTemplate;
 import com.example.listener.ResponseListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -11,15 +10,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-
-
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @RestController
-public class CalculatorRequestController {
+public class CalculatorController {
 
-    // Inject KafkaTemplate instance, this instance is what allows us to send messages through Kafka
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -28,52 +24,35 @@ public class CalculatorRequestController {
 
     @GetMapping("/sum")
     public ResponseEntity<CalculationResponse> sum(@RequestParam BigDecimal a, @RequestParam BigDecimal b) {
-
-        // Create object to send through Kafka
-        String requestId = UUID.randomUUID().toString();
-        CalculationRequest request = new CalculationRequest("sum", a,b,requestId);
-
-        // Send the message to the topic "calc-request"
-        kafkaTemplate.send("calc-requests", requestId, request);
-
-        CalculationResponse response = responseListener.getResponse(requestId);
-
-        return ResponseEntity.ok(response);
+        return performCalculation("sum", a, b);
     }
 
     @GetMapping("/subtraction")
     public ResponseEntity<CalculationResponse> subtraction(@RequestParam BigDecimal a, @RequestParam BigDecimal b) {
-        String requestId = UUID.randomUUID().toString();
-        CalculationRequest request = new CalculationRequest("subtract", a,b,requestId);
-
-        kafkaTemplate.send("calc-requests", requestId, request);
-
-        CalculationResponse response = responseListener.getResponse(requestId);
-
-        return ResponseEntity.ok(response);
+        return performCalculation("subtract", a, b);
     }
 
     @GetMapping("/multiplication")
     public ResponseEntity<CalculationResponse> multiplication(@RequestParam BigDecimal a, @RequestParam BigDecimal b) {
-        String requestId = UUID.randomUUID().toString();
-        CalculationRequest request = new CalculationRequest("multiply", a,b,requestId);
-
-        kafkaTemplate.send("calc-requests", requestId, request);
-
-        CalculationResponse response = responseListener.getResponse(requestId);
-
-        return ResponseEntity.ok(response);
+        return performCalculation("multiply", a, b);
     }
 
     @GetMapping("/division")
     public ResponseEntity<CalculationResponse> division(@RequestParam BigDecimal a, @RequestParam BigDecimal b) {
-        String requestId = UUID.randomUUID().toString();
-        CalculationRequest request = new CalculationRequest("divide", a,b,requestId);
+        return performCalculation("divide", a, b);
+    }
 
-        kafkaTemplate.send("calc-requests", requestId, request);
+    private ResponseEntity<CalculationResponse> performCalculation(String operation, BigDecimal a, BigDecimal b) {
+        try {
+            String requestId = UUID.randomUUID().toString();
+            CalculationRequest request = new CalculationRequest(operation, a, b, requestId);
 
-        CalculationResponse response = responseListener.getResponse(requestId);
+            kafkaTemplate.send("calc-requests", requestId, request);
+            CalculationResponse response = responseListener.getResponse(requestId);
 
-        return ResponseEntity.ok(response);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

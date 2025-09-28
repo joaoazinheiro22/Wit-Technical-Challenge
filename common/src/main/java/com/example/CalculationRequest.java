@@ -1,3 +1,5 @@
+package com.example;
+
 import java.math.BigDecimal;
 
 public class CalculationRequest {
